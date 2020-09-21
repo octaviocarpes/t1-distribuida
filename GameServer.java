@@ -1,5 +1,8 @@
+import java.net.MalformedURLException;
 import java.rmi.Naming;
+import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
+import java.rmi.server.ExportException;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.registry.LocateRegistry;
 import java.util.ArrayList;
@@ -13,11 +16,13 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 	private static volatile int playerCount;
 	private static volatile ArrayList playerIds;
 	private static volatile ArrayList<String> playerAddresses;
+	private static volatile GameInterfaceClient hello;
 
 	public GameServer() throws RemoteException {
 	}
 	
 	public static void main(String[] args) throws RemoteException {
+		hello = null;
 		if (args.length != 2) {
 			System.out.println("Usage: java GameServer <server ip> <number of players>");
 			System.exit(1);
@@ -39,7 +44,6 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 			playerIds = new ArrayList();
 			playerAddresses = new ArrayList();
 			System.out.println("Game Server is ready, waiting for " + numberOfPlayers + " players.");
-
 		} catch (Exception e) {
 			System.out.println("Game Serverfailed: " + e);
 		}
@@ -48,7 +52,7 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 	@Override
 	public int registra() {
 		System.out.println("Adding player: ");
-		GameInterfaceClient hello = null;
+
 		playerCount++;
 		try {
 			int playerId = playerCount;
@@ -58,7 +62,12 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 			System.out.println("Player id: " + playerId);
 			System.out.println("Player address: " + connectLocation);
 
-			return addPlayer(playerId, connectLocation);
+			addPlayer(playerId, connectLocation);
+			if (playerCount >= numberOfPlayers) {
+				System.out.println("Game room is full! You may now play.");
+				System.out.println(playerAddresses);
+				return playerId;
+			}
 		} catch (Exception e) {
 			System.out.println ("Failed to get client IP");
 			e.printStackTrace();
@@ -88,6 +97,18 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 	public void verificaSeUltimoPlayer() throws RemoteException {
 		if (numberOfPlayers == playerCount) {
 			System.out.println("All players are registered!");
+			for (int i = 0; i < playerAddresses.size(); i++) {
+				System.out.println(playerAddresses.get(i));
+			}
+			try {
+				hello = (GameInterfaceClient) Naming.lookup(playerAddresses.get(0));
+				hello.inicia();
+			} catch (RemoteException | NotBoundException | MalformedURLException e) {
+				e.printStackTrace();
+				throw new RemoteException(e.getMessage());
+			}
+		} else {
+			System.out.println("Waiting for players...");
 		}
 	}
 }
