@@ -58,19 +58,7 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 			System.out.println("Player id: " + playerId);
 			System.out.println("Player address: " + connectLocation);
 
-
-			if (playerCount < numberOfPlayers) {
-				return addPlayer(playerId, connectLocation);
-			} else {
-				return addPlayer(playerId, connectLocation);
-//				String playerAddress = playerAddresses.get(0);
-//				System.out.println("Game room full!");
-//				for (int i = 0; i < playerAddresses.size(); i++) {
-//					System.out.println("Connecting with " + playerAddress);
-//					hello = (GameInterfaceClient) Naming.lookup(connectLocation);
-//					hello.inicia();
-//				}
-			}
+			return addPlayer(playerId, connectLocation);
 		} catch (Exception e) {
 			System.out.println ("Failed to get client IP");
 			e.printStackTrace();
@@ -96,4 +84,10 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 		return 0;
 	}
 
+	@Override
+	public void verificaSeUltimoPlayer() throws RemoteException {
+		if (numberOfPlayers == playerCount) {
+			System.out.println("All players are registered!");
+		}
+	}
 }

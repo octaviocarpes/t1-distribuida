@@ -50,6 +50,7 @@ public class GameClient extends UnicastRemoteObject implements GameInterfaceClie
 			System.out.println("Call to server..." );
 			playerId = hello.registra();
 			System.out.println("You are the player: " + playerId);
+			hello.verificaSeUltimoPlayer();
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}
@@ -61,6 +62,7 @@ public class GameClient extends UnicastRemoteObject implements GameInterfaceClie
 	@Override
 	public void inicia() throws RemoteException {
 		System.out.println("Player " + playerId + " turn");
+
 	}
 
 	@Override
