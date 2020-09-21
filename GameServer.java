@@ -38,47 +38,52 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 			playerCount = 0;
 			playerIds = new ArrayList();
 			playerAddresses = new ArrayList();
-			System.out.println("Addition Server is ready, waiting for " + numberOfPlayers + " players.");
+			System.out.println("Game Server is ready, waiting for " + numberOfPlayers + " players.");
 
 		} catch (Exception e) {
-			System.out.println("Addition Serverfailed: " + e);
+			System.out.println("Game Serverfailed: " + e);
 		}
 	}
 
 	@Override
 	public int registra() {
-		System.out.println("Adding player...");
+		System.out.println("Adding player: ");
+		GameInterfaceClient hello = null;
 		playerCount++;
 		try {
+			int playerId = playerCount;
 			remoteHostName = getClientHost();
 			String connectLocation = "rmi://" + remoteHostName + ":52369/Hello2";
 
-			int playerId = playerCount;
+			System.out.println("Player id: " + playerId);
+			System.out.println("Player address: " + connectLocation);
 
-			if (playerCount == numberOfPlayers) {
-				System.out.println("Game room is full!");
-				System.out.println("Game starting...");
-				GameInterfaceClient hello = null;
-				for (int i = 0; i < playerAddresses.size() ; i++) {
-					String playerAddress = playerAddresses.get(i);
-					hello = (GameInterfaceClient) Naming.lookup(playerAddress);
-					hello.inicia();
-				}
-				return -1;
-			}
 
 			if (playerCount < numberOfPlayers) {
-				playerIds.add(playerId);
-				playerAddresses.add(connectLocation);
-				System.out.println("Current players: " + playerIds);
-				return playerId;
+				return addPlayer(playerId, connectLocation);
+			} else {
+				return addPlayer(playerId, connectLocation);
+//				String playerAddress = playerAddresses.get(0);
+//				System.out.println("Game room full!");
+//				for (int i = 0; i < playerAddresses.size(); i++) {
+//					System.out.println("Connecting with " + playerAddress);
+//					hello = (GameInterfaceClient) Naming.lookup(connectLocation);
+//					hello.inicia();
+//				}
 			}
 		} catch (Exception e) {
 			System.out.println ("Failed to get client IP");
 			e.printStackTrace();
 		}
 
-		return -1;
+		return playerCount;
+	}
+
+	private int addPlayer(int playerId, String connectLocation) {
+		playerIds.add(playerId);
+		playerAddresses.add(connectLocation);
+		System.out.println("Current players: " + playerIds);
+		return playerId;
 	}
 
 	@Override
