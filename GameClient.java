@@ -29,7 +29,7 @@ public class GameClient extends UnicastRemoteObject implements GameInterfaceClie
 		try {
 			String client = "rmi://" + args[1] + ":52369/Hello2";
 			Naming.rebind(client, new GameClient());
-			System.out.println("Addition Server is ready.");
+			System.out.println("Game Server is ready.");
 		} catch (Exception e) {
 			System.out.println("Addition Serverfailed: " + e);
 		}

@@ -12,14 +12,14 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 	private static volatile int numberOfPlayers;
 	private static volatile int playerCount;
 	private static volatile ArrayList playerIds;
-	private static volatile ArrayList playerAddresses;
+	private static volatile ArrayList<String> playerAddresses;
 
 	public GameServer() throws RemoteException {
 	}
 	
 	public static void main(String[] args) throws RemoteException {
 		if (args.length != 2) {
-			System.out.println("Usage: java AdditionServer <server ip>");
+			System.out.println("Usage: java GameServer <server ip> <number of players>");
 			System.exit(1);
 		}
 
@@ -39,46 +39,46 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 			playerIds = new ArrayList();
 			playerAddresses = new ArrayList();
 			System.out.println("Addition Server is ready, waiting for " + numberOfPlayers + " players.");
+
 		} catch (Exception e) {
 			System.out.println("Addition Serverfailed: " + e);
 		}
-
 	}
 
 	@Override
 	public int registra() {
 		System.out.println("Adding player...");
+		playerCount++;
 		try {
 			remoteHostName = getClientHost();
+			String connectLocation = "rmi://" + remoteHostName + ":52369/Hello2";
+
+			int playerId = playerCount;
+
+			if (playerCount == numberOfPlayers) {
+				System.out.println("Game room is full!");
+				System.out.println("Game starting...");
+				GameInterfaceClient hello = null;
+				for (int i = 0; i < playerAddresses.size() ; i++) {
+					String playerAddress = playerAddresses.get(i);
+					hello = (GameInterfaceClient) Naming.lookup(playerAddress);
+					hello.inicia();
+				}
+				return -1;
+			}
+
+			if (playerCount < numberOfPlayers) {
+				playerIds.add(playerId);
+				playerAddresses.add(connectLocation);
+				System.out.println("Current players: " + playerIds);
+				return playerId;
+			}
 		} catch (Exception e) {
 			System.out.println ("Failed to get client IP");
 			e.printStackTrace();
 		}
-		String connectLocation = "rmi://" + remoteHostName + ":52369/Hello2";
 
-		int playerId = playerCount;
-		String playerAddress = remoteHostName;
-
-		if (playerCount < numberOfPlayers) {
-			playerIds.add(playerId);
-			playerAddresses.add(playerAddress);
-			playerCount++;
-		} else if(playerCount == numberOfPlayers) {
-			for (int i = 0; i < playerAddresses.size(); i++) {
-				GameInterfaceClient hello = null;
-				try {
-					hello = (GameInterfaceClient) Naming.lookup(connectLocation);
-					hello.inicia();
-					System.out.println("Connecting to server at : " + connectLocation);
-				} catch (Exception e) {
-					System.out.println ("GameClient failed: ");
-					e.printStackTrace();
-				}
-			}
-			return -1;
-		}
-
-		return playerId;
+		return -1;
 	}
 
 	@Override
