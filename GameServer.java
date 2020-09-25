@@ -3,26 +3,40 @@ import java.rmi.Naming;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.server.ExportException;
+import java.rmi.server.ServerNotActiveException;
 import java.rmi.server.UnicastRemoteObject;
 import java.rmi.registry.LocateRegistry;
 import java.util.ArrayList;
+import java.util.Random;
 
 public class GameServer extends UnicastRemoteObject implements GameInterfaceServer {
 	// private static volatile int result;
 	private static volatile String result;
 	private static volatile boolean changed;
 	private static volatile String remoteHostName;
+	private static volatile boolean isGameRoomFull;
 	private static volatile int numberOfPlayers;
 	private static volatile int playerCount;
 	private static volatile ArrayList playerIds;
 	private static volatile ArrayList<String> playerAddresses;
 	private static volatile GameInterfaceClient hello;
+	private static volatile int kill;
+	private static volatile String [] killMessages = {
+			"You were killed by the mighty server",
+			"So long loser",
+			"At leas you've tried",
+			"Lost to RNG... Pathetic",
+	};
 
 	public GameServer() throws RemoteException {
 	}
 	
 	public static void main(String[] args) throws RemoteException {
 		hello = null;
+		isGameRoomFull = false;
+		Random r = new Random();
+		kill = r.nextInt(100);
+
 		if (args.length != 2) {
 			System.out.println("Usage: java GameServer <server ip> <number of players>");
 			System.exit(1);
@@ -49,33 +63,6 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 		}
 	}
 
-	@Override
-	public int registra() {
-		System.out.println("Adding player: ");
-
-		playerCount++;
-		try {
-			int playerId = playerCount;
-			remoteHostName = getClientHost();
-			String connectLocation = "rmi://" + remoteHostName + ":52369/Hello2";
-
-			System.out.println("Player id: " + playerId);
-			System.out.println("Player address: " + connectLocation);
-
-			addPlayer(playerId, connectLocation);
-			if (playerCount >= numberOfPlayers) {
-				System.out.println("Game room is full! You may now play.");
-				System.out.println(playerAddresses);
-				return playerId;
-			}
-		} catch (Exception e) {
-			System.out.println ("Failed to get client IP");
-			e.printStackTrace();
-		}
-
-		return playerCount;
-	}
-
 	private int addPlayer(int playerId, String connectLocation) {
 		playerIds.add(playerId);
 		playerAddresses.add(connectLocation);
@@ -83,32 +70,93 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 		return playerId;
 	}
 
+	private void notifyLastPlayer(String connection, int port) throws RemoteException, NotBoundException, MalformedURLException {
+		try {
+			hello = (GameInterfaceClient) Naming.lookup(connection);
+			hello.indicaUltimoJogador(port);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void notifyAllPlayersToBeReady() {
+		for (int i = 0; i < playerAddresses.size(); i++) {
+			try {
+				String connection = playerAddresses.get(i);
+				hello = (GameInterfaceClient) Naming.lookup(connection);
+				hello.inicia();
+			} catch (Exception e) {
+				e.printStackTrace();
+			}
+		}
+	}
+
+	@Override
+	public int registra(int playerRemotePort) {
+//		Try to add a player
+//		if the game room is not getting full,
+//			add a player and return its id to the client
+//		else if the game room is getting full,
+//			add the player to game and tell him he is the last one,
+//			after this, tell all the players to get ready.
+
+		try {
+			playerCount++;
+			remoteHostName = getClientHost();
+			String connectLocation = "rmi://" + remoteHostName + ":" + playerRemotePort + "/Hello2";
+
+			if (playerCount < numberOfPlayers) {
+				return addPlayer(playerRemotePort, connectLocation);
+			} else if (playerCount == numberOfPlayers) {
+				addPlayer(playerRemotePort, connectLocation);
+				notifyLastPlayer(connectLocation, playerRemotePort);
+				notifyAllPlayersToBeReady();
+				return playerRemotePort;
+			}
+		} catch (ServerNotActiveException | NotBoundException | MalformedURLException | RemoteException e) {
+			e.printStackTrace();
+		}
+		return 0;
+	}
+
+	private void tryToFinishPlayer(int playerId) throws RemoteException, MalformedURLException, NotBoundException {
+		try {
+			System.out.println("Trying to kill the player " + playerId + "...");
+			Random r = new Random();
+			int killNumber = r.nextInt(100);
+			System.out.println(killNumber + ", " + kill);
+			if (kill == killNumber) {
+				String playerAddress = playerAddresses.get(playerIds.indexOf(playerId));
+				hello = (GameInterfaceClient) Naming.lookup(playerAddress);
+				hello.finaliza(killMessages[r.nextInt(3)]);
+			}
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
 	@Override
 	public int joga(int id) throws RemoteException {
+		try {
+			System.out.println();
+			System.out.println();
+			System.out.println("Player " + id + " is playing...");
+			Random r = new Random();
+			int timer = r.nextInt(1500-500) + 500;
+			Thread.sleep(timer);
+			tryToFinishPlayer(id);
+			System.out.println("Player " + id + " finished playing!");
+			System.out.println();
+			System.out.println();
+		} catch (InterruptedException | MalformedURLException | NotBoundException e) {
+			e.printStackTrace();
+		}
+
 		return 0;
 	}
 
 	@Override
 	public int encerra(int id) throws RemoteException {
 		return 0;
-	}
-
-	@Override
-	public void verificaSeUltimoPlayer() throws RemoteException {
-		if (numberOfPlayers == playerCount) {
-			System.out.println("All players are registered!");
-			for (int i = 0; i < playerAddresses.size(); i++) {
-				System.out.println(playerAddresses.get(i));
-			}
-			try {
-				hello = (GameInterfaceClient) Naming.lookup(playerAddresses.get(0));
-				hello.inicia();
-			} catch (RemoteException | NotBoundException | MalformedURLException e) {
-				e.printStackTrace();
-				throw new RemoteException(e.getMessage());
-			}
-		} else {
-			System.out.println("Waiting for players...");
-		}
 	}
 }

@@ -7,29 +7,35 @@ import java.util.Scanner;
 public class GameClient extends UnicastRemoteObject implements GameInterfaceClient {
 	private static volatile int i, j;
 	private static volatile int playerId;
+	private static volatile boolean playerReady;
+	private static volatile String playerRemoteAddress;
+	private static volatile int playerRemoteAddressPort;
 	private static volatile GameInterfaceServer hello;
 
 	public GameClient() throws RemoteException {
 	}
 
 	public static void main(String[] args) {
-		int result;
 
-		if (args.length != 2) {
-			System.out.println("Usage: java GameClient <server ip> <client ip>");
+
+		if (args.length != 3) {
+			System.out.println("Usage: java GameClient <server ip> <client ip> <client port>");
 			System.exit(1);
 		}
-	
+
+		playerRemoteAddress = args[1];
+		playerRemoteAddressPort = Integer.parseInt(args[2]);
+
 		try {
 			System.setProperty("java.rmi.server.hostname", args[1]);
-			LocateRegistry.createRegistry(52369);
+			LocateRegistry.createRegistry(Integer.parseInt(args[2]));
 			System.out.println("java RMI registry created.");
 		} catch (RemoteException e) {
 			System.out.println("java RMI registry already exists.");
 		}
 
 		try {
-			String client = "rmi://" + args[1] + ":52369/Hello2";
+			String client = "rmi://" + args[1] + ":" + playerRemoteAddressPort + "/Hello2";
 			Naming.rebind(client, new GameClient());
 			System.out.println("Game Server is ready.");
 		} catch (Exception e) {
@@ -63,14 +69,15 @@ public class GameClient extends UnicastRemoteObject implements GameInterfaceClie
 			switch (scanner) {
 				case 1:
 					System.out.println();
-					System.out.println("Register");
-					playerId = hello.registra();
-					System.out.println("You are the player: " + playerId);
+					int id = hello.registra(playerRemoteAddressPort);
+					playerId = id;
+					System.out.println("Registered as the player: " + playerId);
 					System.out.println();
 					break;
 				case 2:
 					System.out.println();
-					System.out.println("Play");
+					System.out.println("Player " + playerId + " is playing...");
+					play();
 					System.out.println();
 					hello.joga(playerId);
 					break;
@@ -88,19 +95,44 @@ public class GameClient extends UnicastRemoteObject implements GameInterfaceClie
 		}
 	}
 
+	private static void play() {
+		if (playerReady) {
+			int count = 0;
+			try {
+				while (count < 50) {
+					System.out.println("Making a move...(" + count + ")");
+					hello.joga(playerId);
+					count++;
+				}
+				hello.encerra(playerId);
+			} catch (RemoteException e) {
+				e.printStackTrace();
+			}
+		} else {
+			System.out.println("You are not ready! Be sure to register in the game server before playing.");
+		}
+	}
 
 	@Override
 	public void inicia() throws RemoteException {
-		System.out.println("Player " + playerId + " intiates");
+		playerReady = true;
+		System.out.println("Player " + playerId + " is ready");
 	}
 
 	@Override
-	public void finaliza() throws RemoteException {
-		System.out.println("Player " + playerId + " finalizes");
+	public void indicaUltimoJogador(int playerId) throws RemoteException {
+		this.playerId = playerId;
+		playerReady = true;
 	}
 
 	@Override
-	public void cutuca() throws RemoteException {
+	public void finaliza(String data) throws RemoteException {
+		System.out.println(data);
+		System.exit(1);
+	}
+
+	@Override
+	public void cutuca(String data) throws RemoteException {
 		System.out.println("Player " + playerId + " pokes");
 	}
 }
