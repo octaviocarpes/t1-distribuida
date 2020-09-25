@@ -132,7 +132,7 @@ public class GameClient extends UnicastRemoteObject implements GameInterfaceClie
 	}
 
 	@Override
-	public void cutuca(String data) throws RemoteException {
-		System.out.println("Player " + playerId + " pokes");
+	public String cutuca() throws RemoteException {
+		return "{ health: up, playerId: " + playerId + " }";
 	}
 }

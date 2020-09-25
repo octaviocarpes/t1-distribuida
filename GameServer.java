@@ -8,6 +8,8 @@ import java.rmi.server.UnicastRemoteObject;
 import java.rmi.registry.LocateRegistry;
 import java.util.ArrayList;
 import java.util.Random;
+import java.util.Timer;
+import java.util.TimerTask;
 
 public class GameServer extends UnicastRemoteObject implements GameInterfaceServer {
 	// private static volatile int result;
@@ -24,9 +26,32 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 	private static volatile String [] killMessages = {
 			"You were killed by the mighty server",
 			"So long loser",
-			"At leas you've tried",
+			"At least you've tried",
 			"Lost to RNG... Pathetic",
 	};
+
+	static class SayHello extends TimerTask {
+		public void run() {
+			for (int i = 0; i < playerCount; i++) {
+				try {
+					System.out.println();
+					System.out.println();
+					System.out.println("Poking client at: " + playerAddresses.get(i));
+					hello = (GameInterfaceClient) Naming.lookup(playerAddresses.get(i));
+					System.out.println(hello.cutuca());
+					System.out.println();
+					System.out.println();
+				} catch (NotBoundException e) {
+					e.printStackTrace();
+				} catch (MalformedURLException e) {
+					e.printStackTrace();
+				} catch (RemoteException e) {
+					System.out.println(playerAddresses.get(i) + " is not responding!");
+				}
+			}
+		}
+	}
+
 
 	public GameServer() throws RemoteException {
 	}
@@ -91,6 +116,16 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 		}
 	}
 
+	private static void pokeClients() {
+		// And From your main() method or any other method
+		Timer timer = new Timer();
+		timer.schedule(new SayHello(), 0, 5000);
+	}
+
+	private static void pokeClient(String clientAddress) {
+
+	}
+
 	@Override
 	public int registra(int playerRemotePort) {
 //		Try to add a player
@@ -99,6 +134,8 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 //		else if the game room is getting full,
 //			add the player to game and tell him he is the last one,
 //			after this, tell all the players to get ready.
+//		after everything
+//			pokes all clients
 
 		try {
 			playerCount++;
@@ -111,6 +148,7 @@ public class GameServer extends UnicastRemoteObject implements GameInterfaceServ
 				addPlayer(playerRemotePort, connectLocation);
 				notifyLastPlayer(connectLocation, playerRemotePort);
 				notifyAllPlayersToBeReady();
+				pokeClients();
 				return playerRemotePort;
 			}
 		} catch (ServerNotActiveException | NotBoundException | MalformedURLException | RemoteException e) {
